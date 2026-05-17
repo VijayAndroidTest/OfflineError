@@ -77,8 +77,11 @@ dependencies {
     androidTestImplementation(libs.turbine) // Dynamic Flow assertions
     testImplementation("org.robolectric:robolectric:4.12.2") // 👈 Add this for local JVM context simulation
     testImplementation("androidx.test:core-ktx:1.6.1")
+
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
 }

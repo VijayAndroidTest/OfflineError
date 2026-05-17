@@ -1,11 +1,14 @@
 package com.example.offlinetrack
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -32,10 +35,43 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var errorDao: LocalErrorDao
+
+    //Leak canary Code
+    companion object {
+        // This static variable will hold onto the activity instance indefinitely
+        lateinit var leakedActivityContext: MainActivity
+    }
+
+    // 👈 Launcher registration to handle user choice when permission prompt pops up
+    private val requestNotificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            Toast.makeText(this, "Notification permission allowed! LeakCanary alerts active.", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "Permission denied. LeakCanary can only log to Logcat.", Toast.LENGTH_LONG).show()
+        }
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+ //Leak canary Code
+// Intentionally creating a hard reference leak
+        leakedActivityContext = this
 
-
+// 👈 Trigger the Runtime Permission Dialogue for Android 13 (API 33) and above
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        // FORCED LEAK METHOD: Start a continuous background thread
+        // that holds a strong reference to this Activity context indefinitely
+        Thread {
+            while (true) {
+                // By reading or referencing 'this' activity context inside a long-running thread loop,
+                // the JVM cannot clean up MainActivity even if the user exits the app.
+                val appTitle = this.title
+                Thread.sleep(1000)
+            }
+        }.start()
 
         setContent {
             MaterialTheme {
