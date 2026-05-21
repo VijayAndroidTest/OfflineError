@@ -198,7 +198,9 @@ fun OfflineDashboard(errorDao: LocalErrorDao) {
         }
     }
 }
-
+//With the Profiler: You record a System Trace while scrolling. The Profiler gives you a visual timeline
+// and says: "Look right here. Your date formatting function inside ErrorLogItem is taking
+// 45 milliseconds to run on every single row. That is what is causing the lag."
 @Composable
 fun ErrorLogItem(error: LocalErrorEntity) {
     val dateString = remember(error.timestamp) {

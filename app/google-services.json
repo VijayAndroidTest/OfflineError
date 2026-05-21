@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "960077749649",
+    "project_id": "offlineerrors-11e82",
+    "storage_bucket": "offlineerrors-11e82.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:960077749649:android:4728331bf0dd422acd4e30",
+        "android_client_info": {
+          "package_name": "com.example.offlinetrack"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAMzuz4r9RrVWUZjmukHHfSmZBBVRxH75Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

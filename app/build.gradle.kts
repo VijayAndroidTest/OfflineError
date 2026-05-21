@@ -3,7 +3,8 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.ksp)
     alias(libs.plugins.google.hilt)
-    alias(libs.plugins.kotlin.android) // 👈 Put Hilt back here natively!
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.google.gms.google.services) // 👈 Put Hilt back here natively!
 }
 
 android {
@@ -58,6 +59,7 @@ dependencies {
     // Room Database
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
+    implementation(libs.firebase.analytics)
     ksp(libs.room.compiler)
 
     // Hilt Dependency Injection
