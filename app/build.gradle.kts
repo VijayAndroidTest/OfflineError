@@ -18,8 +18,8 @@ android {
         applicationId = "com.example.offlinetrack"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -32,7 +32,20 @@ android {
                 "proguard-rules.pro"
             )
         }
+
+        debug {
+
+            firebaseAppDistribution {
+
+                testers = "vijayarajan1003@gmail.com"
+
+                releaseNotes = "Offline telemetry debug build"
+
+            }
+
+        }
     }
+
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
