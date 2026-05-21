@@ -7,8 +7,8 @@ on:
     branches: [ "main", "master" ]
 
 jobs:
-  build_and_test:
-    name: Build, Test & Package App
+  build_and_deploy:
+    name: Build, Test & Deploy App
     runs-on: ubuntu-latest
 
     steps:
@@ -34,8 +34,10 @@ jobs:
     - name: Assemble Debug APK Build
       run: ./gradlew assembleDebug
 
-    - name: Upload Compiled Debug APK
-      uses: actions/upload-artifact@v4
+    - name: Upload to Firebase App Distribution
+      uses: wzieba/Firebase-App-Distribution@v1
       with:
-        name: offline-telemetry-tracker-debug
-        path: app/build/outputs/apk/debug/app-debug.apk
+        appId: ${{ secrets.FIREBASE_APP_ID }}
+        token: ${{ secrets.FIREBASE_TOKEN }}
+        groups: testers
+        file: app/build/outputs/apk/debug/app-debug.apk
