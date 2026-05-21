@@ -23,6 +23,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+import com.google.firebase.Firebase
+import com.google.firebase.appdistribution.appDistribution
+
+import com.google.firebase.appdistribution.ktx.appDistribution
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -36,27 +41,28 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var errorDao: LocalErrorDao
 
-
-
-    // 👈 Launcher registration to handle user choice when permission prompt pops up
+    // Launcher registration to handle user choice when permission prompt pops up
     private val requestNotificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            Toast.makeText(this, "Notification permission allowed! LeakCanary alerts active.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Notification permission allowed! Update alerts active.", Toast.LENGTH_SHORT).show()
+            checkForUpdates()
         } else {
-            Toast.makeText(this, "Permission denied. LeakCanary can only log to Logcat.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Permission denied. Update alerts may not work correctly.", Toast.LENGTH_LONG).show()
+            checkForUpdates()
         }
     }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-
-// 👈 Trigger the Runtime Permission Dialogue for Android 13 (API 33) and above
+        // Trigger the Runtime Permission Dialogue for Android 13 (API 33) and above
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            checkForUpdates()
         }
-
 
         setContent {
             MaterialTheme {
@@ -68,6 +74,19 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * 🔄 Checks Firebase App Distribution for a new APK version.
+     */
+    private fun checkForUpdates() {
+        Firebase.appDistribution.updateIfNewReleaseAvailable()
+            .addOnSuccessListener {
+                // Check completed successfully
+            }
+            .addOnFailureListener { exception ->
+                Toast.makeText(this, "Update check skipped: ${exception.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 }
 

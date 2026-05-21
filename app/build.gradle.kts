@@ -4,7 +4,10 @@ plugins {
     alias(libs.plugins.google.ksp)
     alias(libs.plugins.google.hilt)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.google.gms.google.services) // 👈 Put Hilt back here natively!
+    alias(libs.plugins.google.gms.google.services)
+    alias(libs.plugins.google.firebase.appdistribution) // 👈 Put Hilt back here natively!
+
+
 }
 
 android {
@@ -60,6 +63,11 @@ dependencies {
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     implementation(libs.firebase.analytics)
+// 👇 ADD THIS LINE RIGHT HERE TO IMPORT THE INTERFACES
+    implementation(libs.firebase.appdistribution)
+
+
+
     ksp(libs.room.compiler)
 
     // Hilt Dependency Injection
