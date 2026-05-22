@@ -41,7 +41,8 @@
 #        token: ${{ secrets.FIREBASE_TOKEN }}
 #        groups: testers
 #        file: app/build/outputs/apk/debug/app-debug.apk
-name: Android Offline Tracker CI/CD (Fastlane Optimized)
+
+name: Android Offline Tracker CI/CD
 
 on:
   push:
@@ -51,7 +52,7 @@ on:
 
 jobs:
   build_and_deploy:
-    name: Execute Fastlane Delivery Pipeline
+    name: Build, Test & Deploy App
     runs-on: ubuntu-latest
 
     steps:
@@ -65,14 +66,14 @@ jobs:
           java-version: "17"
           cache: "gradle"
 
+      - name: Grant Execute Permission to Gradle Wrapper
+        run: chmod +x gradlew
+
       - name: Set up Ruby Environment
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.2'
-          bundler-cache: true # Automatically caches your Ruby gems for faster builds!
-
-      - name: Install Fastlane Plugins
-        run: bundle exec fastlane add_plugin firebase_app_distribution --skip-gemfile-confirmation
+          ruby-version: '3.3'
+          bundler-cache: true
 
       - name: Run Fastlane Deployment Lane
         env:
