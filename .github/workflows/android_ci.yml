@@ -48,11 +48,11 @@ on:
   push:
     branches: [ "main", "master" ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master" ] # 🚀 Triggers automatically when a PR is opened
 
 jobs:
-  build_and_deploy:
-    name: Build, Test & Deploy App
+  verify_and_deploy:
+    name: Build, Test & Verify
     runs-on: ubuntu-latest
 
     steps:
@@ -75,7 +75,16 @@ jobs:
           ruby-version: '3.3'
           bundler-cache: true
 
-      - name: Run Fastlane Deployment Lane
+      # 📋 SCENARIO 1: If it's a Pull Request, ONLY run verification tests (No distribution)
+      - name: Run Code Verification Checks (PR Target)
+        if: github.event_name == 'pull_request'
+        run: |
+          ./gradlew lintDebug
+          ./gradlew testDebugUnitTest
+
+      # 🚀 SCENARIO 2: If it's a direct push/merge to main, run the full Fastlane deployment lane
+      - name: Run Fastlane Deployment Lane (Push Target)
+        if: github.event_name == 'push'
         env:
           FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
