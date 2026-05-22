@@ -1,4 +1,47 @@
-name: Android Offline Tracker CI/CD
+#name: Android Offline Tracker CI/CD
+#
+#on:
+#  push:
+#    branches: [ "main", "master" ]
+#  pull_request:
+#    branches: [ "main", "master" ]
+#
+#jobs:
+#  build_and_deploy:
+#    name: Build, Test & Deploy App
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#    - name: Checkout Codebase
+#      uses: actions/checkout@v4
+#
+#    - name: Set up JDK 17
+#      uses: actions/setup-java@v4
+#      with:
+#        distribution: "zulu"
+#        java-version: "17"
+#        cache: "gradle"
+#
+#    - name: Grant Execute Permission to Gradle Wrapper
+#      run: chmod +x gradlew
+#
+#    - name: Run Android Lint Code Checks
+#      run: ./gradlew lintDebug
+#
+#    - name: Run Unit Tests
+#      run: ./gradlew testDebugUnitTest
+#
+#    - name: Assemble Debug APK Build
+#      run: ./gradlew assembleDebug
+#
+#    - name: Upload to Firebase App Distribution
+#      uses: wzieba/Firebase-Distribution-Github-Action@v1
+#      with:
+#        appId: ${{ secrets.FIREBASE_APP_ID }}
+#        token: ${{ secrets.FIREBASE_TOKEN }}
+#        groups: testers
+#        file: app/build/outputs/apk/debug/app-debug.apk
+name: Android Offline Tracker CI/CD (Fastlane Optimized)
 
 on:
   push:
@@ -8,36 +51,31 @@ on:
 
 jobs:
   build_and_deploy:
-    name: Build, Test & Deploy App
+    name: Execute Fastlane Delivery Pipeline
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Codebase
-      uses: actions/checkout@v4
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        distribution: "zulu"
-        java-version: "17"
-        cache: "gradle"
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "zulu"
+          java-version: "17"
+          cache: "gradle"
 
-    - name: Grant Execute Permission to Gradle Wrapper
-      run: chmod +x gradlew
+      - name: Set up Ruby Environment
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true # Automatically caches your Ruby gems for faster builds!
 
-    - name: Run Android Lint Code Checks
-      run: ./gradlew lintDebug
+      - name: Install Fastlane Plugins
+        run: bundle exec fastlane add_plugin firebase_app_distribution --skip-gemfile-confirmation
 
-    - name: Run Unit Tests
-      run: ./gradlew testDebugUnitTest
-
-    - name: Assemble Debug APK Build
-      run: ./gradlew assembleDebug
-
-    - name: Upload to Firebase App Distribution
-      uses: wzieba/Firebase-Distribution-Github-Action@v1
-      with:
-        appId: ${{ secrets.FIREBASE_APP_ID }}
-        token: ${{ secrets.FIREBASE_TOKEN }}
-        groups: testers
-        file: app/build/outputs/apk/debug/app-debug.apk
+      - name: Run Fastlane Deployment Lane
+        env:
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: bundle exec fastlane deploy_debug_to_firebase

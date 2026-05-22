@@ -1,0 +1,23 @@
+default_platform(:android)
+
+platform :android do
+  desc "Run Lint, Unit Tests, and deploy the Debug APK to Firebase App Distribution"
+  lane :deploy_debug_to_firebase do
+    # 1. Run structural code analysis
+    gradle(task: "lintDebug")
+
+    # 2. Run your unit test suite
+    gradle(task: "testDebugUnitTest")
+
+    # 3. Compile the debug binary artifact
+    gradle(task: "assembleDebug")
+
+    # 4. Push cleanly to your testers via Firebase
+    firebase_app_distribution(
+      app: ENV["FIREBASE_APP_ID"],
+      groups: "testers",
+      apk_path: "app/build/outputs/apk/debug/app-debug.apk",
+      release_notes: "Automated Build via Fastlane integration"
+    )
+  end
+end
