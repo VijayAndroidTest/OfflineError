@@ -53,7 +53,8 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var errorDao: LocalErrorDao
 
-    // FIX: Set to true immediately so the native OS app-icon screen dismisses instantly
+    // 🛠️ FIX: Using 'by remember' inside the composition layer is ideal,
+    // but since these control the Activity level flow, we declare them cleanly as standard observables:
     private var isAppReady by mutableStateOf(true)
     private val currentScreenState = mutableStateOf(AppScreenState.SplashCanvas)
 
