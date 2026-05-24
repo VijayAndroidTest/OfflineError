@@ -3,8 +3,8 @@ default_platform(:android)
 platform :android do
   desc "Run Lint, Unit Tests, and deploy the Debug APK to Firebase App Distribution"
   lane :deploy_debug_to_firebase do
-    # 1. Clear old cache artifacts and run structural code analysis
-    gradle(task: "clean lintDebug")
+    # 1. Clear old cache artifacts and run structural code analysis using an explicit array
+    gradle(tasks: ["clean", "lintDebug"])
 
     # 2. Run your unit test suite
     gradle(task: "testDebugUnitTest")
