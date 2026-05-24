@@ -133,14 +133,18 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun checkForUpdates() {
-        Log.d(TAG, "Execution Pass: Checking Firebase app targets...")
+        Log.d(TAG, "Execution Pass: Checking Firebase App Distribution for new tester builds...")
+
         Firebase.appDistribution.updateIfNewReleaseAvailable()
-            .addOnCompleteListener { task ->
-                Log.d(TAG, "Execution Pass: Task loop finalized.")
+            .addOnSuccessListener {
+                Log.d(TAG, "Firebase App Distribution check processed successfully.")
+                // If an update was found, the SDK handles showing its own blocking UI.
+                // If no update is found, we should advance the user to the dashboard.
                 navigateToDashboard()
             }
             .addOnFailureListener { exception ->
-                Log.e(TAG, "Execution Failure: Task skipped.", exception)
+                Log.e(TAG, "Firebase App Distribution update check failed.", exception)
+                // If it fails (e.g., offline or tester not signed in), don't lock them out.
                 navigateToDashboard()
             }
     }
