@@ -150,3 +150,5 @@ class MainActivity : ComponentActivity() {
         currentScreenState.value = AppScreenState.Dashboard
     }
 }
+
+// Junior Dashboard UI Layout Draft
