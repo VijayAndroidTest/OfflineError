@@ -91,11 +91,11 @@ fun OfflineDashboard(errorDao: LocalErrorDao) {
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-
+            val emptyLogsMessage = stringResource(id = R.string.toast_no_logs)
             Button(
                 onClick = {
                     if (loggedErrors.isEmpty()) {
-                        Toast.makeText(context, context.getString(R.string.toast_no_logs), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, emptyLogsMessage, Toast.LENGTH_SHORT).show()
                     } else {
                         val simpleDateFormat = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault())
                         val logDump = loggedErrors.joinToString(separator = "\n\n====================\n\n") { error ->
