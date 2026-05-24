@@ -32,18 +32,14 @@ android {
                 "proguard-rules.pro"
             )
         }
-
         debug {
-
             firebaseAppDistribution {
-
-                testers = "vijayarajan1003@gmail.com"
-
-                releaseNotes = "Offline telemetry debug build"
-
+                // 📢 Swap out the single tester line for the group block:
+                groups = "testers"
+                releaseNotes = "Offline telemetry debug build v1.0.3"
             }
-
         }
+
     }
 
 
@@ -79,7 +75,8 @@ dependencies {
 // 👇 ADD THIS LINE RIGHT HERE TO IMPORT THE INTERFACES
     implementation(libs.firebase.appdistribution)
 
-
+// Standard Google Splash Screen API library
+    implementation("androidx.core:core-splashscreen:1.0.1")
 
     ksp(libs.room.compiler)
 

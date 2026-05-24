@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,244 +18,134 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
+import com.example.offlinetrack.ui.theme.OfflineTrackTheme
+import androidx.compose.ui.tooling.preview.Preview
+import android.content.res.Configuration
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.google.firebase.Firebase
 import com.google.firebase.appdistribution.appDistribution
-
-import com.google.firebase.appdistribution.ktx.appDistribution
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+
+enum class AppScreenState {
+    SplashCanvas,
+    Dashboard
+}
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    private val TAG = "SplashDebugLog"
 
     @Inject
     lateinit var errorDao: LocalErrorDao
 
-    // Launcher registration to handle user choice when permission prompt pops up
+    // FIX: Set to true immediately so the native OS app-icon screen dismisses instantly
+    private var isAppReady by mutableStateOf(true)
+    private val currentScreenState = mutableStateOf(AppScreenState.SplashCanvas)
+
     private val requestNotificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
+        Log.d(TAG, "Permission dialog callback triggered. isGranted = $isGranted")
         if (isGranted) {
-            Toast.makeText(this, "Notification permission allowed! Update alerts active.", Toast.LENGTH_SHORT).show()
-            checkForUpdates()
+            Toast.makeText(this, getString(R.string.toast_permission_granted), Toast.LENGTH_SHORT).show()
         } else {
-            Toast.makeText(this, "Permission denied. Update alerts may not work correctly.", Toast.LENGTH_LONG).show()
-            checkForUpdates()
+            Toast.makeText(this, getString(R.string.toast_permission_denied), Toast.LENGTH_LONG).show()
         }
+        checkForUpdates()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Log.d(TAG, "─── NEW COLD BOOT START ───")
+
+        // Tells Android to complete the native window setup
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
 
-        // Trigger the Runtime Permission Dialogue for Android 13 (API 33) and above
+        // Dismisses the system launcher icon overlay immediately since isAppReady is true
+        splashScreen.setKeepOnScreenCondition { !isAppReady }
+
+        setContent {
+            Log.d(TAG, "3. setContent composition container starting setup")
+
+            LaunchedEffect(Unit) {
+                Log.d(TAG, "4. Compose rendered -> Showing custom splash screen layout...")
+
+                // FIX: Holds your custom splash design on the screen for exactly 3 seconds
+                delay(3000)
+
+                Log.d(TAG, "5. Custom delay complete. Executing initialization tasks...")
+                handleStartupPermissions()
+            }
+
+            val isShowingSplash = currentScreenState.value == AppScreenState.SplashCanvas
+            Log.d(TAG, "6. Theme wrapping layout engine profile match. isShowingSplash = $isShowingSplash")
+
+            OfflineTrackTheme(dynamicColor = !isShowingSplash) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    // FIX: Dynamically match the splash design's background color during the transition
+                    color = if (isShowingSplash) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Crossfade(
+                        targetState = currentScreenState.value,
+                        animationSpec = tween(durationMillis = 600), // Clean transition fade
+                        label = "ScreenTransition"
+                    ) { screen ->
+                        when (screen) {
+                            AppScreenState.SplashCanvas -> {
+                                Log.d(TAG, "-> Crossfade: Displaying custom splash canvas")
+                                MyCustomSplashDesign()
+                            }
+                            AppScreenState.Dashboard -> {
+                                Log.d(TAG, "-> Crossfade: Navigating to Dashboard view")
+                                OfflineDashboard(errorDao = errorDao)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun handleStartupPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Log.d(TAG, "Execution Pass: Requesting system runtime permission layout handles.")
             requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else {
             checkForUpdates()
         }
-
-        setContent {
-            MaterialTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    OfflineDashboard(errorDao = errorDao)
-                }
-            }
-        }
     }
 
-    /**
-     * 🔄 Checks Firebase App Distribution for a new APK version.
-     */
     private fun checkForUpdates() {
+        Log.d(TAG, "Execution Pass: Checking Firebase app targets...")
         Firebase.appDistribution.updateIfNewReleaseAvailable()
-            .addOnSuccessListener {
-                // Check completed successfully
+            .addOnCompleteListener { task ->
+                Log.d(TAG, "Execution Pass: Task loop finalized.")
+                navigateToDashboard()
             }
             .addOnFailureListener { exception ->
-                Toast.makeText(this, "Update check skipped: ${exception.message}", Toast.LENGTH_SHORT).show()
+                Log.e(TAG, "Execution Failure: Task skipped.", exception)
+                navigateToDashboard()
             }
     }
-}
 
-// Global Helper function to trigger the standard Android Share Intent
-fun shareCrashLogs(context: Context, logText: String) {
-    val sendIntent = Intent().apply {
-        action = Intent.ACTION_SEND
-        putExtra(Intent.EXTRA_TEXT, logText)
-        type = "text/plain"
-    }
-    val shareIntent = Intent.createChooser(sendIntent, "Export Offline Diagnostics")
-    context.startActivity(shareIntent)
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun OfflineDashboard(errorDao: LocalErrorDao) {
-    val loggedErrors by errorDao.getAllErrorsFlow().collectAsState(initial = emptyList())
-    val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current // Grab instance context safely inside Compose tree
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Offline Telemetry Logger", fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
-            )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp)
-        ) {
-            Text(text = "Diagnostic Controls", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    onClick = { throw RuntimeException("Main Thread Crash triggered by user action click!") },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Crash Main UI")
-                }
-
-                Button(
-                    onClick = {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            throw IllegalStateException("Background worker coroutine task processing error!")
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE65100)),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Crash Worker Thread")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // NEW BUTTON: Formats the Room data array and passes it off to the OS Share Tray
-            Button(
-                onClick = {
-                    if (loggedErrors.isEmpty()) {
-                        Toast.makeText(context, "No error logs found to export!", Toast.LENGTH_SHORT).show()
-                    } else {
-                        val simpleDateFormat = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault())
-                        val logDump = loggedErrors.joinToString(separator = "\n\n====================\n\n") { error ->
-                            "CRASH OCCURRED AT: ${simpleDateFormat.format(Date(error.timestamp))}\n" +
-                                    "THREAD: ${error.threadName}\n" +
-                                    "EXCEPTION: ${error.exceptionMessage}\n" +
-                                    "STACK TRACE:\n${error.stackTrace}"
-                        }
-                        shareCrashLogs(context, logDump)
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00796B)), // Deep Teal styling
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Export & Share Logs (${loggedErrors.size} Found)")
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Button(
-                onClick = {
-                    coroutineScope.launch(Dispatchers.IO) {
-                        errorDao.clearAllErrors()
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Clear Saved Log Records")
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-            Text(text = "Local Persisted Failures (${loggedErrors.size})", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(modifier = Modifier.height(8.dp))
-
-            if (loggedErrors.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)),
-                    contentAlignment = androidx.compose.ui.Alignment.Center
-                ) {
-                    Text("No errors captured yet. App is operating normally.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(loggedErrors) { item ->
-                        ErrorLogItem(error = item)
-                    }
-                }
-            }
-        }
-    }
-}
-//With the Profiler: You record a System Trace while scrolling. The Profiler gives you a visual timeline
-// and says: "Look right here. Your date formatting function inside ErrorLogItem is taking
-// 45 milliseconds to run on every single row. That is what is causing the lag."
-@Composable
-fun ErrorLogItem(error: LocalErrorEntity) {
-    val dateString = remember(error.timestamp) {
-        SimpleDateFormat("dd-MM-yyyy HH:mm:ss.SSS", Locale.getDefault()).format(Date(error.timestamp))
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(text = "Time: $dateString", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
-                Text(text = "Thread: ${error.threadName}", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onErrorContainer)
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(text = error.exceptionMessage, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.error)
-
-            Spacer(modifier = Modifier.height(6.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.2f))
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Text(
-                text = error.stackTrace,
-                fontSize = 11.sp,
-                fontFamily = FontFamily.Monospace,
-                lineHeight = 14.sp,
-                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f),
-                modifier = Modifier.heightIn(max = 120.dp)
-            )
-        }
+    private fun navigateToDashboard() {
+        Log.d(TAG, "8. Swapping final view layout profiles to Dashboard state targets.")
+        currentScreenState.value = AppScreenState.Dashboard
     }
 }

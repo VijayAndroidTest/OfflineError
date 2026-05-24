@@ -1,3 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OfflineTrack</string>
+    <string name="app_name">Offline Track</string>
+    <string name="toast_permission_granted">Notification permission allowed! Update alerts active.</string>
+    <string name="toast_permission_denied">Permission denied. Update alerts may not work correctly.</string>
+    <string name="toast_update_skipped">Update check skipped: %1$s</string>
+    <string name="share_chooser_title">Export Offline Diagnostics</string>
+    <string name="app_bar_title">Offline Telemetry Logger</string>
+    <string name="section_controls">Diagnostic Controls</string>
+    <string name="btn_crash_main">Crash Main UI</string>
+    <string name="btn_crash_worker">Crash Worker Thread</string>
+    <string name="toast_no_logs">No error logs found to export!</string>
+    <string name="btn_export_share">Export &amp; Share Logs (%1$d Found)</string>
+    <string name="btn_clear_logs">Clear Saved Log Records</string>
+    <string name="section_failures_count">Local Persisted Failures (%1$d)</string>
+    <string name="empty_logs_msg">No errors captured yet. App is operating normally.</string>
+
+    <!-- Structured Template Strings for Log Export -->
+    <string name="log_format_header">CRASH OCCURRED AT: %1$s\nTHREAD: %2$s\nEXCEPTION: %3$s\nSTACK TRACE:\n%4$s</string>
+    <string name="label_time">Time: %1$s</string>
+    <string name="label_thread">Thread: %1$s</string>
 </resources>
