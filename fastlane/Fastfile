@@ -1,23 +1,24 @@
 default_platform(:android)
 
 platform :android do
-  desc "Run Lint, Unit Tests, and deploy the Debug APK to Firebase App Distribution"
+  desc "Run Lint, Unit Tests, and deploy the Dev Debug APK to Firebase App Distribution"
   lane :deploy_debug_to_firebase do
-    # 1. Clear old cache artifacts and run structural code analysis using an explicit array
-    gradle(tasks: ["clean", "lintDebug"])
+    # 1. Clear old cache artifacts and run structural code analysis on the explicit dev variant
+    gradle(tasks: ["clean", "lintDevDebug"])
 
-    # 2. Run your unit test suite
-    gradle(task: "testDebugUnitTest")
+    # 2. Run your unit test suite for the dev flavor
+    gradle(task: "testDevDebugUnitTest")
 
-    # 3. Compile the debug binary artifact
-    gradle(task: "assembleDebug")
+    # 3. Compile the flavor-specific debug binary artifact
+    gradle(task: "assembleDevDebug")
 
     # 4. Push cleanly to your testers via Firebase
     firebase_app_distribution(
       app: ENV["FIREBASE_APP_ID"],
       groups: "testers",
-      apk_path: "app/build/outputs/apk/debug/app-debug.apk",
-      release_notes: "Automated Build via Fastlane integration"
+      # 🛠️ FIX: Path changes from 'debug/' to 'dev/debug/' and filenames become 'app-dev-debug.apk'
+      apk_path: "app/build/outputs/apk/dev/debug/app-dev-debug.apk",
+      release_notes: "Automated Build via Fastlane flavor integration"
     )
   end
 end
