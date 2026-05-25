@@ -32,6 +32,7 @@ import androidx.compose.animation.core.tween
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.google.firebase.Firebase
 import com.google.firebase.appdistribution.appDistribution
+
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -131,20 +132,22 @@ class MainActivity : ComponentActivity() {
             checkForUpdates()
         }
     }
-
     private fun checkForUpdates() {
         Log.d(TAG, "Execution Pass: Checking Firebase App Distribution for new tester builds...")
 
         Firebase.appDistribution.updateIfNewReleaseAvailable()
-            .addOnSuccessListener {
-                Log.d(TAG, "Firebase App Distribution check processed successfully.")
-                // If an update was found, the SDK handles showing its own blocking UI.
-                // If no update is found, we should advance the user to the dashboard.
-                navigateToDashboard()
+            .addOnSuccessListener { release ->
+                if (release != null) {
+                    Log.d(TAG, "New release found! Holding screen for Firebase Update UI...")
+                    // Secure hold: Do NOT call navigateToDashboard() here.
+                    // Let the native Firebase overlay display safely over your splash view.
+                } else {
+                    Log.d(TAG, "No updates available. Moving user cleanly to the dashboard.")
+                    navigateToDashboard()
+                }
             }
             .addOnFailureListener { exception ->
-                Log.e(TAG, "Firebase App Distribution update check failed.", exception)
-                // If it fails (e.g., offline or tester not signed in), don't lock them out.
+                Log.e(TAG, "Update check failed", exception)
                 navigateToDashboard()
             }
     }

@@ -1,3 +1,5 @@
+import com.google.firebase.appdistribution.gradle.firebaseAppDistribution // 🌟 FIX: Clears the deprecated warning notice
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -5,9 +7,7 @@ plugins {
     alias(libs.plugins.google.hilt)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.google.gms.google.services)
-    alias(libs.plugins.google.firebase.appdistribution) // 👈 Put Hilt back here natively!
-
-
+    alias(libs.plugins.google.firebase.appdistribution)
 }
 
 android {
@@ -18,10 +18,27 @@ android {
         applicationId = "com.example.offlinetrack"
         minSdk = 24
         targetSdk = 36
-        versionCode = 6
-        versionName = "1.0.6"
+        versionCode = 10
+        versionName = "1.0.10:wq" +
+                ""
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // 🛠️ STEP 1: Define the dimension for your variants
+    flavorDimensions.add("environment")
+
+    // 🛠️ STEP 2: Configure your specific variants (Product Flavors)
+    productFlavors {
+        create("dev") {
+            dimension = "environment"
+//            applicationIdSuffix = ".dev"
+//            versionNameSuffix = "-dev"
+        }
+        create("prod") {
+            dimension = "environment"
+            // Production keeps the base applicationId and clean versionName
+        }
     }
 
     buildTypes {
@@ -33,15 +50,13 @@ android {
             )
         }
         debug {
+            // 🛠️ STEP 3: Wire up App Distribution specifically to the debug variants
             firebaseAppDistribution {
-                // 📢 Swap out the single tester line for the group block:
                 groups = "testers"
-                releaseNotes = "Offline telemetry debug build v1.0.3"
+                releaseNotes = "Offline telemetry build v1.0.6-dev"
             }
         }
-
     }
-
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -54,15 +69,13 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
-    // 🛠️ ADD THIS BLOCK HERE TO PREVENT LINT FAILURES FROM ABORTING CI
+
     lint {
         abortOnError = false
         checkReleaseBuilds = false
         ignoreWarnings = true
     }
 }
-
-
 
 dependencies {
     implementation(libs.androidx.core.ktx)
@@ -78,10 +91,9 @@ dependencies {
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     implementation(libs.firebase.analytics)
-// 👇 ADD THIS LINE RIGHT HERE TO IMPORT THE INTERFACES
     implementation(libs.firebase.appdistribution)
 
-// Standard Google Splash Screen API library
+    // Standard Google Splash Screen API library
     implementation("androidx.core:core-splashscreen:1.0.1")
 
     ksp(libs.room.compiler)
@@ -100,8 +112,8 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.kotlinx.coroutines.test)
-    androidTestImplementation(libs.turbine) // Dynamic Flow assertions
-    testImplementation("org.robolectric:robolectric:4.12.2") // 👈 Add this for local JVM context simulation
+    androidTestImplementation(libs.turbine)
+    testImplementation("org.robolectric:robolectric:4.12.2")
     testImplementation("androidx.test:core-ktx:1.6.1")
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
