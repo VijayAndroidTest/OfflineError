@@ -14,9 +14,9 @@ platform :android do
 
     # 4. Push cleanly to your testers via Firebase
     firebase_app_distribution(
-      app: ENV["FIREBASE_APP_ID"],
-      groups: "testers",
-      # 🛠️ FIX: Path changes from 'debug/' to 'dev/debug/' and filenames become 'app-dev-debug.apk'
+      # 🌟 FIXED: Hardcoding your Dev App ID here ensures Fastlane uploads directly to your '.dev' container
+      app: "1:960077749649:android:660905a62bb089cbcd4e30",
+      groups: "testers", # 🔥 Keeps your exact group name intact
       apk_path: "app/build/outputs/apk/dev/debug/app-dev-debug.apk",
       release_notes: "Automated Build via Fastlane flavor integration"
     )
