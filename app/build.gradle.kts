@@ -1,4 +1,4 @@
-import com.google.firebase.appdistribution.gradle.firebaseAppDistribution // 🌟 FIX: Clears the deprecated warning notice
+import com.google.firebase.appdistribution.gradle.firebaseAppDistribution
 
 plugins {
     alias(libs.plugins.android.application)
@@ -18,27 +18,37 @@ android {
         applicationId = "com.example.offlinetrack"
         minSdk = 24
         targetSdk = 36
-        versionCode = 10
-        versionName = "1.0.10"
+        versionCode = 5
+        versionName = "1.0.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    // 🛠️ STEP 1: Define the dimension for your variants
     flavorDimensions.add("environment")
 
-    // 🛠️ STEP 2: Configure your specific variants (Product Flavors)
     productFlavors {
         create("dev") {
             dimension = "environment"
-//            applicationIdSuffix = ".dev"
-//            versionNameSuffix = "-dev"
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+
+            firebaseAppDistribution {
+                artifactType = "APK"
+                groups = "testers"
+                releaseNotes = "Development variant alpha release verification."
+            }
         }
         create("prod") {
             dimension = "environment"
-            // Production keeps the base applicationId and clean versionName
+
+            firebaseAppDistribution {
+                artifactType = "APK"
+                groups = "testers"
+                releaseNotes = "Production candidate variant validation build."
+            }
         }
     }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -48,16 +58,9 @@ android {
             )
         }
         debug {
-            // Keep this block clear for standard local debugging flags
+            // 🌟 FIXED: Cleaned up the conflicting firebaseAppDistribution block from here
+            isMinifyEnabled = false
         }
-    }
-
-    // 🛠️ FIX: Place the App Distribution mapping out here at the root level
-    // so it properly injects the real underlying SDK components into your flavor variants!
-    firebaseAppDistribution {
-        artifactType = "APK"
-        groups = "testers"
-        releaseNotes = "Automated flavor update verification build"
     }
 
     compileOptions {
@@ -67,7 +70,9 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
+
     kotlinOptions {
         jvmTarget = "17"
     }
@@ -94,10 +99,9 @@ dependencies {
     implementation(libs.room.ktx)
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.appdistribution)
+    implementation(libs.firebase.appdistribution.api)
 
-    // Standard Google Splash Screen API library
     implementation("androidx.core:core-splashscreen:1.0.1")
-
     ksp(libs.room.compiler)
 
     // Hilt Dependency Injection

@@ -10,36 +10,27 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.offlinetrack.ui.theme.OfflineTrackTheme
-import androidx.compose.ui.tooling.preview.Preview
-import android.content.res.Configuration
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.example.offlinetrack.ui.theme.OfflineTrackTheme
 import com.google.firebase.Firebase
 import com.google.firebase.appdistribution.appDistribution
-
 import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
+import javax.inject.Inject
 
 enum class AppScreenState {
     SplashCanvas,
@@ -54,67 +45,69 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var errorDao: LocalErrorDao
 
-    // 🛠️ FIX: Using 'by remember' inside the composition layer is ideal,
-    // but since these control the Activity level flow, we declare them cleanly as standard observables:
     private var isAppReady by mutableStateOf(true)
     private val currentScreenState = mutableStateOf(AppScreenState.SplashCanvas)
 
+    private var isCheckingForUpdates by mutableStateOf(true)
+    private var blockErrorMessage by mutableStateOf<String?>(null)
+
+    private val sharedPrefs by lazy { getSharedPreferences("app_dist_prefs", Context.MODE_PRIVATE) }
+    private var isUpdateDownloading by mutableStateOf(false)
+
     private val requestNotificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        Log.d(TAG, "Permission dialog callback triggered. isGranted = $isGranted")
-        if (isGranted) {
-            Toast.makeText(this, getString(R.string.toast_permission_granted), Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(this, getString(R.string.toast_permission_denied), Toast.LENGTH_LONG).show()
-        }
+    ) {
         checkForUpdates()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d(TAG, "─── NEW COLD BOOT START ───")
 
-        // Tells Android to complete the native window setup
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
 
-        // Dismisses the system launcher icon overlay immediately since isAppReady is true
+        isUpdateDownloading = sharedPrefs.getBoolean("is_downloading", false)
         splashScreen.setKeepOnScreenCondition { !isAppReady }
 
         setContent {
-            Log.d(TAG, "3. setContent composition container starting setup")
-
             LaunchedEffect(Unit) {
-                Log.d(TAG, "4. Compose rendered -> Showing custom splash screen layout...")
-
-                // FIX: Holds your custom splash design on the screen for exactly 3 seconds
                 delay(3000)
-
-                Log.d(TAG, "5. Custom delay complete. Executing initialization tasks...")
                 handleStartupPermissions()
             }
 
             val isShowingSplash = currentScreenState.value == AppScreenState.SplashCanvas
-            Log.d(TAG, "6. Theme wrapping layout engine profile match. isShowingSplash = $isShowingSplash")
 
             OfflineTrackTheme(dynamicColor = !isShowingSplash) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    // FIX: Dynamically match the splash design's background color during the transition
                     color = if (isShowingSplash) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer
                 ) {
-                    Crossfade(
-                        targetState = currentScreenState.value,
-                        animationSpec = tween(durationMillis = 600), // Clean transition fade
-                        label = "ScreenTransition"
-                    ) { screen ->
+                    Crossfade(targetState = currentScreenState.value, label = "ScreenTransition") { screen ->
                         when (screen) {
                             AppScreenState.SplashCanvas -> {
-                                Log.d(TAG, "-> Crossfade: Displaying custom splash canvas")
-                                MyCustomSplashDesign()
+                                Box(modifier = Modifier.fillMaxSize()) {
+                                    MyCustomSplashDesign()
+
+                                    if (blockErrorMessage != null) {
+                                        StrictBlockOverlay(
+                                            title = "Access Blocked",
+                                            message = blockErrorMessage!!,
+                                            showRetryButton = true,
+                                            onRetry = {
+                                                blockErrorMessage = null
+                                                isCheckingForUpdates = true
+                                                checkForUpdates()
+                                            }
+                                        )
+                                    } else if (isCheckingForUpdates) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 64.dp),
+                                            color = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    }
+                                }
                             }
                             AppScreenState.Dashboard -> {
-                                Log.d(TAG, "-> Crossfade: Navigating to Dashboard view")
                                 OfflineDashboard(errorDao = errorDao)
                             }
                         }
@@ -126,34 +119,87 @@ class MainActivity : ComponentActivity() {
 
     private fun handleStartupPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            Log.d(TAG, "Execution Pass: Requesting system runtime permission layout handles.")
             requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else {
             checkForUpdates()
         }
     }
+
     private fun checkForUpdates() {
+// 🌟 ALTERNATIVE FIX: Detects local debug builds using application info flags directly
+//        val isDebuggable = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+//
+//        if (isDebuggable) {
+//            Log.d(TAG, "🔧 LOCAL DEBUG DETECTION: Bypassing Firebase App Distribution checks to avoid loop.")
+//            isCheckingForUpdates = false
+//            navigateToDashboard()
+//            return
+//        }
+
+        if (isUpdateDownloading) {
+            Log.d(TAG, "Break Loop: Session triggered a download update task. Navigating to Dashboard.")
+            sharedPrefs.edit().putBoolean("is_downloading", false).apply()
+            isUpdateDownloading = false
+            navigateToDashboard()
+            return
+        }
+
         Log.d(TAG, "Execution Pass: Checking Firebase App Distribution for new tester builds...")
+
+        if (!Firebase.appDistribution.isTesterSignedIn) {
+            Firebase.appDistribution.signInTester()
+                .addOnSuccessListener { checkForUpdates() }
+                .addOnFailureListener { e ->
+                    isCheckingForUpdates = false
+                    blockErrorMessage = "Authentication Required: You must log into Firebase App Distribution to verify tester validation status."
+                }
+            return
+        }
 
         Firebase.appDistribution.updateIfNewReleaseAvailable()
             .addOnSuccessListener { release ->
+                isCheckingForUpdates = false
                 if (release != null) {
-                    Log.d(TAG, "New release found! Holding screen for Firebase Update UI...")
-                    // Secure hold: Do NOT call navigateToDashboard() here.
-                    // Let the native Firebase overlay display safely over your splash view.
+                    Log.d(TAG, "🎉 SUCCESS: New release found! Holding screen for Firebase Update UI...")
+                    sharedPrefs.edit().putBoolean("is_downloading", true).apply()
+                    isUpdateDownloading = true
                 } else {
-                    Log.d(TAG, "No updates available. Moving user cleanly to the dashboard.")
+                    Log.d(TAG, "ℹ️ INFO: No updates available. Moving to dashboard.")
                     navigateToDashboard()
                 }
             }
             .addOnFailureListener { exception ->
-                Log.e(TAG, "Update check failed", exception)
-                navigateToDashboard()
+                isCheckingForUpdates = false
+                if (exception.message?.contains("canceled") == true) {
+                    if (isUpdateDownloading) {
+                        Log.d(TAG, "User accepted update. System download screen active.")
+                    } else {
+                        blockErrorMessage = "Update Canceled: You cannot bypass mandatory distribution builds. Please update the application to continue."
+                    }
+                } else {
+                    blockErrorMessage = "Network Failure: Unable to verify distribution version clearance profiles. Check your internet connection."
+                }
             }
     }
 
     private fun navigateToDashboard() {
-        Log.d(TAG, "8. Swapping final view layout profiles to Dashboard state targets.")
         currentScreenState.value = AppScreenState.Dashboard
+    }
+
+    @Composable
+    fun StrictBlockOverlay(title: String, message: String, showRetryButton: Boolean, onRetry: () -> Unit) {
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.85f)).padding(32.dp), contentAlignment = Alignment.Center) {
+            Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(text = message, fontSize = 14.sp, textAlign = TextAlign.Center)
+                    Spacer(modifier = Modifier.height(24.dp))
+                    if (showRetryButton) {
+                        Button(onClick = onRetry) { Text(text = "Retry System Check") }
+                    }
+                }
+            }
+        }
     }
 }
