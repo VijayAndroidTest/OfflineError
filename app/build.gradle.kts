@@ -19,8 +19,7 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = 10
-        versionName = "1.0.10:wq" +
-                ""
+        versionName = "1.0.10"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -40,7 +39,6 @@ android {
             // Production keeps the base applicationId and clean versionName
         }
     }
-
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -50,12 +48,16 @@ android {
             )
         }
         debug {
-            // 🛠️ STEP 3: Wire up App Distribution specifically to the debug variants
-            firebaseAppDistribution {
-                groups = "testers"
-                releaseNotes = "Offline telemetry build v1.0.6-dev"
-            }
+            // Keep this block clear for standard local debugging flags
         }
+    }
+
+    // 🛠️ FIX: Place the App Distribution mapping out here at the root level
+    // so it properly injects the real underlying SDK components into your flavor variants!
+    firebaseAppDistribution {
+        artifactType = "APK"
+        groups = "testers"
+        releaseNotes = "Automated flavor update verification build"
     }
 
     compileOptions {
